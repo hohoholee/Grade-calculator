@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>학기말 성적 계산기</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f5f6fa;--card:#fff;--text:#1d2433;--muted:#667085;--line:#e3e6ee;--accent:#3b6cf6;--ok:#1a9d5c;--bad:#d94343;--chip:#eef2ff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#12151c;--card:#1b1f2a;--text:#eceff6;--muted:#9aa3b5;--line:#2b3140;--accent:#7a9bff;--ok:#4cd08a;--bad:#ff7a7a;--chip:#252c44}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#12151c;--card:#1b1f2a;--text:#eceff6;--muted:#9aa3b5;--line:#2b3140;--accent:#7a9bff;--ok:#4cd08a;--bad:#ff7a7a;--chip:#252c44}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;line-height:1.5}
+main{max-width:660px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:22px;margin:8px 0 4px}
+p.sub{color:var(--muted);margin:0 0 16px;font-size:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+h2{font-size:15px;margin:0 0 12px}
+.tabs{display:flex;gap:6px;overflow-x:auto;margin-bottom:14px;padding-bottom:2px}
+.tab{flex:none;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;padding:7px 14px;font-size:14px;cursor:pointer}
+.tab.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.tab.add{color:var(--accent);border-style:dashed}
+.row{display:grid;grid-template-columns:1fr 66px 78px 30px;gap:6px;align-items:center;margin-bottom:8px}
+.row.head{color:var(--muted);font-size:12px;margin-bottom:4px}
+input{width:100%;padding:9px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text);font-size:16px}
+input.n{text-align:right}
+input:focus{outline:2px solid var(--accent);border-color:transparent}
+button.x{border:0;background:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0}
+button.btn{border:1px dashed var(--accent);background:none;color:var(--accent);border-radius:10px;padding:8px 12px;font-size:14px;cursor:pointer;margin-right:6px;margin-top:4px}
+button.btn.del{border-color:var(--bad);color:var(--bad)}
+.subname{display:flex;gap:8px;align-items:center;margin-bottom:12px}
+.subname input{font-weight:700}
+.big{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.big .num{font-size:34px;font-weight:700}
+.badge{background:var(--chip);color:var(--accent);border-radius:999px;padding:2px 12px;font-weight:700;font-size:18px}
+.meta{color:var(--muted);font-size:13px;margin-top:6px}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:10px 6px;border-bottom:1px solid var(--line);text-align:left}
+th{color:var(--muted);font-weight:500;font-size:12px}
+tr:last-child td{border-bottom:0}
+.ok{color:var(--ok);font-weight:600}.bad{color:var(--bad);font-weight:600}.need{font-weight:700}
+.warn{color:var(--bad);font-size:13px;min-height:1em;margin-top:6px}
+</style>
+</head>
+<body>
+<main>
+<h1>📝 학기말 성적 계산기</h1>
+<p class="sub">과목별로 점수를 입력하세요. 수행평가는 여러 개 추가할 수 있고, 아직 안 본 시험은 비워두면 돼요.</p>
+
+<div class="tabs" id="tabs"></div>
+
+<section class="card">
+  <div class="subname"><input id="subName" placeholder="과목 이름"><button class="btn del" id="delSub">과목 삭제</button></div>
+  <div class="row head"><span>항목</span><span>비율(%)</span><span>점수(100점)</span><span></span></div>
+  <div id="items"></div>
+  <button class="btn" id="addPer">+ 수행평가 추가</button><button class="btn" id="addEtc">+ 기타 항목</button>
+  <div class="warn" id="warn"></div>
+</section>
+
+<section class="card"><h2>현재 결과</h2><div id="result"></div></section>
+
+<section class="card" id="needCard">
+  <h2>등급별 필요 점수</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>등급</th><th>기준</th><th>남은 항목에서 필요한 평균</th></tr></thead>
+    <tbody id="need"></tbody>
+  </table></div>
+  <div class="meta" id="needNote"></div>
+</section>
+
+<section class="card"><h2>전체 과목 요약</h2><div class="scroll"><table><tbody id="sum"></tbody></table></div></section>
+
+<section class="card">
+  <h2>저장 · 초기화</h2>
+  <div class="meta" id="saveStatus" style="margin:0 0 10px"></div>
+  <button class="btn" id="clearScores">이 과목 점수만 지우기</button><button class="btn del" id="resetAll">전체 초기화</button>
+</section>
+</main>
+<script>
+const G=[[90,'A','90점 이상'],[80,'B','80~89점'],[70,'C','70~79점'],[60,'D','60~69점']];
+const grade=v=>v>=90?'A':v>=80?'B':v>=70?'C':v>=60?'D':'E';
+const f=n=>(Math.round(n*100)/100).toString();
+const $=id=>document.getElementById(id);
+let uid=1;
+const mk=(name,items)=>({id:uid++,name,items});
+const defItems=()=>[{n:'중간고사',w:30,s:''},{n:'기말고사',w:30,s:''},{n:'수행평가 1',w:20,s:''},{n:'수행평가 2',w:20,s:''}];
+let st={subs:[mk('국어',defItems())],cur:0};
+try{const r=JSON.parse(localStorage.getItem('gradeCalcV2')||'null');if(r&&r.subs&&r.subs.length){st=r;uid=Math.max(...st.subs.map(s=>s.id))+1;if(!st.subs[st.cur])st.cur=0}}catch(e){}
+const save=()=>{
+  const el=$('saveStatus');
+  try{localStorage.setItem('gradeCalcV2',JSON.stringify(st));
+    if(el)el.textContent='✅ 입력한 내용은 자동 저장돼요. 마지막 저장: '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){if(el)el.textContent='⚠️ 이 브라우저에서는 저장이 막혀 있어요. 창을 닫으면 입력한 내용이 사라질 수 있어요.'}
+};
+const sub=()=>st.subs[st.cur];
+
+function calc(s){
+  let earned=0,remW=0,totW=0,entW=0,bad=false;
+  s.items.forEach(it=>{
+    const w=parseFloat(it.w)||0,raw=String(it.s).trim(),v=parseFloat(raw);
+    totW+=w;
+    if(raw!==''&&!isNaN(v)){if(v<0||v>100)bad=true;earned+=Math.min(Math.max(v,0),100)*w/100;entW+=w}
+    else remW+=w;
+  });
+  return {earned,remW,totW,entW,bad};
+}
+function row(tb,g,d,c){const tr=document.createElement('tr');tr.innerHTML=`<td><b>${g}</b></td><td>${d}</td><td>${c}</td>`;tb.appendChild(tr)}
+
+function renderTabs(){
+  const t=$('tabs');t.innerHTML='';
+  st.subs.forEach((s,i)=>{const b=document.createElement('button');b.className='tab'+(i===st.cur?' on':'');b.textContent=s.name||'과목';b.onclick=()=>{st.cur=i;renderAll()};t.appendChild(b)});
+  const a=document.createElement('button');a.className='tab add';a.textContent='+ 과목 추가';
+  a.onclick=()=>{st.subs.push(mk('새 과목 '+(st.subs.length+1),defItems()));st.cur=st.subs.length-1;renderAll()};
+  t.appendChild(a);
+}
+function renderItems(){
+  const box=$('items');box.innerHTML='';
+  const s=sub();$('subName').value=s.name;
+  s.items.forEach((it,i)=>{
+    const r=document.createElement('div');r.className='row';
+    const n=document.createElement('input');n.value=it.n;n.placeholder='항목 이름';
+    const w=document.createElement('input');w.type='number';w.inputMode='decimal';w.className='n';w.value=it.w;w.min=0;
+    const v=document.createElement('input');v.type='number';v.inputMode='decimal';v.className='n';v.value=it.s;v.placeholder='미입력';v.min=0;v.max=100;
+    const x=document.createElement('button');x.className='x';x.textContent='✕';x.title='삭제';
+    n.oninput=()=>{it.n=n.value;save()};
+    w.oninput=()=>{it.w=w.value;update()};
+    v.oninput=()=>{it.s=v.value;update()};
+    x.onclick=()=>{s.items.splice(i,1);renderItems();update()};
+    r.append(n,w,v,x);box.appendChild(r);
+  });
+}
+function update(){
+  save();
+  const s=sub(),{earned,remW,totW,entW,bad}=calc(s);
+  $('warn').textContent=bad?'점수는 0~100 사이로 입력해 주세요.':(totW>0&&Math.abs(totW-100)>0.001?`반영비율 합계가 ${f(totW)}%예요. (보통 100%)`:'');
+  const res=$('result'),tb=$('need');tb.innerHTML='';$('needNote').textContent='';
+  if(totW<=0){res.textContent='항목과 반영비율을 입력해 주세요.';$('needCard').style.display='none';renderSum();return}
+  $('needCard').style.display='';
+  const cur=earned/totW*100,max=(earned+remW)/totW*100;
+  if(remW===0){
+    res.innerHTML=`<div class="big"><span class="num">${f(cur)}점</span><span class="badge">${grade(cur)}등급</span></div><div class="meta">모든 항목이 입력된 최종 학기말 성적이에요.</div>`;
+    G.forEach(([t,g,d])=>row(tb,g,d,cur>=t?'<span class="ok">달성</span>':`<span class="bad">${f(t-cur)}점 부족</span>`));
+    row(tb,'E','60점 미만',cur<60?'<span class="bad">해당</span>':'-');
+  }else{
+    res.innerHTML=entW===0?'<div class="meta">점수를 하나 이상 입력하면 결과가 나와요.</div>':
+    `<div class="big"><span class="num">${f(earned)}점</span><span class="badge">현재 ${grade(cur)}</span></div>
+    <div class="meta">현재까지 환산 점수 ${f(earned)} / ${f(totW)}점 (입력한 항목 평균 ${f(earned/entW*100)}점)</div>
+    <div class="meta">예상 학기말 범위: ${f(cur)}점(${grade(cur)}) ~ ${f(max)}점(${grade(max)})</div>`;
+    G.forEach(([t,g,d])=>{
+      const need=(t*totW/100-earned)/remW*100;
+      row(tb,g,d,need<=0?'<span class="ok">이미 확정 🎉</span>':need>100?'<span class="bad">불가능</span>':`<span class="need">평균 ${f(Math.ceil(need*100)/100)}점 이상</span>`);
+    });
+    row(tb,'E','60점 미만','<span style="color:var(--muted)">위 기준 미달 시</span>');
+    $('needNote').textContent=`남은 항목: 총 ${f(remW)}%. 남은 항목들의 평균 점수 기준이에요.`;
+  }
+  renderSum();
+}
+function renderSum(){
+  const tb=$('sum');tb.innerHTML='';
+  st.subs.forEach(s=>{
+    const c=calc(s),tr=document.createElement('tr'),a=document.createElement('td'),b=document.createElement('td');
+    a.textContent=s.name||'과목';a.style.fontWeight=600;
+    if(c.totW<=0||c.entW===0)b.textContent='-';
+    else{const cur=c.earned/c.totW*100;b.textContent=c.remW===0?`${f(cur)}점 · ${grade(cur)}등급 (최종)`:`현재 ${f(cur)}점 · ${grade(cur)} (진행 중)`}
+    tr.append(a,b);tb.appendChild(tr);
+  });
+  [['중간','중간고사'],['기말','기말고사']].forEach(([k,label])=>{
+    const v=[];
+    st.subs.forEach(s=>s.items.forEach(it=>{const x=parseFloat(it.s);if(String(it.n).includes(k)&&String(it.s).trim()!==''&&!isNaN(x))v.push(x)}));
+    const tr=document.createElement('tr'),a=document.createElement('td'),b=document.createElement('td');
+    a.textContent=label+' 평균';a.style.fontWeight=700;
+    b.textContent=v.length?`${f(v.reduce((p,c)=>p+c,0)/v.length)}점 (${v.length}과목)`:'-';
+    tr.style.background='var(--chip)';tr.append(a,b);tb.appendChild(tr);
+  });
+}
+function renderAll(){renderTabs();renderItems();update()}
+
+$('subName').oninput=e=>{sub().name=e.target.value;renderTabs();renderSum();save()};
+$('delSub').onclick=()=>{if(st.subs.length<2){sub().items=defItems();sub().name='국어';}else{st.subs.splice(st.cur,1);st.cur=Math.max(0,st.cur-1)}renderAll()};
+$('addPer').onclick=()=>{const s=sub(),k=s.items.filter(i=>i.n.startsWith('수행평가')).length+1;s.items.push({n:'수행평가 '+k,w:10,s:''});renderItems();update()};
+$('addEtc').onclick=()=>{sub().items.push({n:'기타',w:10,s:''});renderItems();update()};
+$('clearScores').onclick=()=>{
+  if(!confirm(`'${sub().name}' 과목의 점수를 모두 지울까요? (항목 이름과 비율은 그대로 유지돼요)`))return;
+  sub().items.forEach(it=>it.s='');renderItems();update();
+};
+$('resetAll').onclick=()=>{
+  if(!confirm('모든 과목과 입력한 내용을 전부 지우고 처음 상태로 되돌릴까요?\n이 작업은 되돌릴 수 없어요.'))return;
+  uid=1;st={subs:[mk('국어',defItems())],cur:0};renderAll();
+};
+renderAll();
+</script>
+</body>
+</html>
